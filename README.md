@@ -11,7 +11,7 @@ Implementation of [Graylog Extended Logging Format](http://docs.graylog.org/en/l
 
 ### UDP
 ```D
-Compress c; //`null` value is for no compression
+Compress c; // `null` value is for no compression
 // c = new Compress;
 // c = new Compress(HeaderFormat.gzip);
 auto socket = new UdpSocket();
@@ -36,7 +36,7 @@ error("===== Error Information =====");
 ### HTTP
 ```D
 import std.net.curl: HTTP;
-Compress c; //use `null` value is for no compression
+Compress c; // `null` value is for no compression
 // c = new Compress;
 // c = new Compress(HeaderFormat.gzip);
 sharedLog = new HttpGrayLogger(HTTP("192.168.59.103:12204/gelf"), c, "YourServiceName", LogLevel.all);
