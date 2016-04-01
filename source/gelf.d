@@ -62,9 +62,44 @@ unittest
 	}
 }
 
+unittest
+{
+	void t_udp()
+	{
+		Compress c; //`null` value for no compression
+		// c = new Compress;
+		// c = new Compress(HeaderFormat.gzip);
+		auto socket = new UdpSocket();
+		socket.connect(new InternetAddress("192.168.59.103", 12201));
+		// The last param is UDP chunk size. This is optional paramter with default value equals to 8192
+		sharedLog = new UdpGrayLogger(socket, c, "YourServiceName", LogLevel.all, 4096);
+		error("===== Error Information =====");
+	}
+
+	void t_tcp()
+	{
+		import std.typecons: Yes, No;
+		auto socket = new TcpSocket();
+		socket.connect(new InternetAddress("192.168.59.103", 12201));
+		/+Defualt value for nullDelimeter is `Yes`. Newline delimiter would be used if nullDelimeter is `false`/`No`.+/
+		sharedLog = new TcpGrayLogger(socket, "YourServiceName", LogLevel.all, Yes.nullDelimeter);
+		error("===== Error Information =====");
+	}
+
+	void t_http()
+	{
+		import std.net.curl: HTTP;
+		Compress c; //`null` value for no compression
+		// c = new Compress;
+		// c = new Compress(HeaderFormat.gzip);
+		sharedLog = new HttpGrayLogger(HTTP("192.168.59.103:12204/gelf"), c, "YourServiceName", LogLevel.all);
+		error("===== Error Information =====");
+	}
+}
+
+public import std.experimental.logger.core;
+
 import std.socket;
-import std.experimental.logger.core;
-import std.range.primitives;
 import std.format : formattedWrite;
 import std.datetime : Date, DateTime, SysTime, UTC;
 import std.concurrency : Tid;
@@ -393,7 +428,7 @@ abstract class GrayLogger : Logger
 
 	final void clearAppender()
 	{
-		enum ml = 8196;
+		enum ml = 8192;
 		_dataAppender.clear;
 		if(_dataAppender.capacity > ml)
 		{
