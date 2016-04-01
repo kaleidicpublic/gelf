@@ -1,6 +1,6 @@
 {
 	"name": "gelf",
-	"description": "The Graylog Extended Log Format",
+	"description": "The Graylog Extended Log Format for std.experimental.logger",
 	"copyright": "Copyright © 2016, Ilya Yaroshenko",
 	"authors": ["Ilya Yaroshenko"],
 	"license": "BSL-1.0"
