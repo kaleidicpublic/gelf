@@ -1,0 +1,7 @@
+{
+	"name": "gelf",
+	"description": "The Graylog Extended Log Format",
+	"copyright": "Copyright © 2016, Ilya Yaroshenko",
+	"authors": ["Ilya Yaroshenko"],
+	"license": "BSL-1.0"
+}
