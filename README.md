@@ -11,7 +11,7 @@ Implementation of [Graylog Extended Logging Format](http://docs.graylog.org/en/l
 
 ### UDP
 ```D
-Compress c; //use `null` value is for no compression
+Compress c; //`null` value is for no compression
 // c = new Compress;
 // c = new Compress(HeaderFormat.gzip);
 auto socket = new UdpSocket();
