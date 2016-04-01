@@ -27,7 +27,8 @@ error("===== Error Information =====");
 import std.typecons: Yes, No;
 auto socket = new TcpSocket();
 socket.connect(new InternetAddress("192.168.59.103", 12201));
-/+Defualt value for nullDelimeter is `Yes`. Newline delimiter would be used if nullDelimeter is `false`/`No`.+/
+// Defualt value for nullDelimeter is `Yes`.
+// Newline delimiter would be used if nullDelimeter is `false`/`No`.+/
 sharedLog = new TcpGrayLogger(socket, "YourServiceName", LogLevel.all, Yes.nullDelimeter);
 
 error("===== Error Information =====");
