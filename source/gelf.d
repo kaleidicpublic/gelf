@@ -1,3 +1,66 @@
+/++
+Implementation of Graylog Extended Logging Format for `std.experimental.logger`.
++/
+module gelf;
+
+//version = gelf_test_udp;
+//version = gelf_test_tcp;
+//version = gelf_test_http;
+
+/// UDP
+version(gelf_test_udp)
+unittest
+{
+	import std.format: format;
+	foreach(i, c; [Compress.init, new Compress, new Compress(HeaderFormat.gzip)])
+	{
+		auto socket = new UdpSocket();
+		socket.connect(new InternetAddress("192.168.59.103", 12201));
+		auto logger = new UdpGrayLogger(socket, null, "UDP%s".format(i), LogLevel.all, 512);
+		logger.errorf("===== UDP #%s.0 =====", i);
+		logger.errorf("===== UDP #%s.1 =====", i);
+		logger.errorf("========== UDP #%s.3 ==========\n%s", i,
+			"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed vitae nisl scelerisque,
+			vestibulum arcu quis, rhoncus leo. Nunc ullamcorper nibh vitae nisl viverra dignissim.
+			Etiam dictum tincidunt commodo. Morbi faucibus et ipsum in hendrerit. Phasellus rutrum,
+			lacus at auctor tempor, metus nisl suscipit nisi, elementum molestie quam enim nec erat.
+			Sed cursus libero felis, in pulvinar neque molestie eget. Praesent pulvinar est vitae sem
+			pulvinar, pharetra dignissim velit condimentum.
+
+			Vestibulum laoreet lorem eu dui ornare, ac congue enim consectetur.
+			Morbi tincidunt, turpis et egestas sodales, erat velit suscipit felis,
+			quis porttitor nulla turpis ut odio. Fusce in faucibus felis, ac feugiat mauris.
+			Nullam vel sagittis mi. Nullam eu turpis ullamcorper, porta odio sit amet, dictum lorem.
+			Nunc dictum in sem vel pharetra. In consectetur posuere massa, sed convallis felis tempus quis.
+			Maecenas eleifend aliquam lectus pretium aliquam. Morbi viverra dui tortor,
+			vel laoreet libero accumsan sed. Quisque congue erat quis nisl sed.");
+	}
+}
+
+/// TCP
+version(gelf_test_tcp)
+unittest
+{
+	auto socket = new TcpSocket();
+	socket.connect(new InternetAddress("192.168.59.103", 12202));
+	auto logger = new TcpGrayLogger(socket, "TCP", LogLevel.all);
+	logger.error("===== TCP.0 =====");
+	logger.error("===== TCP.1 =====");
+	logger.error("===== TCP.2 =====");
+}
+
+/// HTTP
+version(gelf_test_http)
+unittest
+{
+	import std.format: format;
+	import std.net.curl;
+	foreach(i, c; [Compress.init, new Compress, new Compress(HeaderFormat.gzip)])
+	{
+		auto logger = new HttpGrayLogger(HTTP("192.168.59.103:12204/gelf"), c, "HTTP%s".format(i), LogLevel.all);
+		logger.errorf("===== HTTP #%s =====", i);
+	}
+}
 
 import std.socket;
 import std.experimental.logger.core;
@@ -5,38 +68,84 @@ import std.range.primitives;
 import std.format : formattedWrite;
 import std.datetime : Date, DateTime, SysTime, UTC;
 import std.concurrency : Tid;
-import std.zlib: Compress;
+import std.zlib: Compress, HeaderFormat;
 import core.stdc.errno: errno, EINTR;
 
-
-import std.stdio, std.array, std.algorithm;
-
-GrayLogger grayLogger(UdpSocket socket, Compress compress, string host, LogLevel v, int chunk = 8192) @safe
+/++
+HTTP Graylog Logger
++/
+class HttpGrayLogger : GrayLogger
 {
-	return new UdpGrayLogger(socket, compress, host, v, chunk);
-}
+	import std.net.curl;
 
-GrayLogger grayLogger(TcpSocket socket, Compress compress, string host, LogLevel v) @safe
-{
-	return new TcpGrayLogger(socket, compress, host, v);
-}
+	protected HTTP _http;
 
-//class HttpGrayLogger : GrayLogger
-//{
-//	this(TcpSocket socket,  Compress compress, string host, LogLevel v) @safe
-//	{
-//		super(socket, compress, host, v);
-//	}
-//}
-
-class TcpGrayLogger : GrayLogger
-{
-	this(TcpSocket socket,  Compress compress, string host, LogLevel v) @safe
+	/++
+	Params:
+		http = HTTP configuration. See `std.net.curl`.
+		compress = compress algorithm. Sets `null` or `Compress.init` to send messages without compression.
+		host = local service name
+		v = log level
+		chunk = maximal chunk size (size of UDP datagram)
+	+/
+	this(HTTP http, Compress compress, string host, LogLevel v) @trusted
 	{
-		super(socket, compress, host, v);
+		_http = http;
+		super(compress, host, v);
 	}
 
-	override protected void writeLogMsg(ref LogEntry payload)
+	override protected void writeLogMsg(ref LogEntry payload) @trusted
+	{
+		fillAppender(payload);
+		auto msg = _dataAppender.data;
+		scope(exit) clearAppender;
+		http.contentLength = msg.length;
+		http.onSend =
+			(void[] data)
+			{
+				import std.algorithm.comparison: min;
+				immutable len = min(data.length, msg.length);
+				if (len)
+				{
+					data[0..len] = msg[0..len];
+					msg = msg[len .. $];
+				}
+				return len;
+			};
+		import std.typecons: No;
+		http.perform(No.throwOnError);
+	}
+
+	final HTTP http() @property nothrow
+	{
+		return _http;
+	}
+}
+
+/++
+TCP Graylog Logger
++/
+class TcpGrayLogger : SocketGrayLogger
+{
+	import std.typecons: Flag, Yes;
+
+	private immutable string delim;
+
+	/++
+	Graylog TCP connection does not support compression.
+	Params:
+		socket = remote blocking TCP socket
+		host = local service name
+		v = log level
+		useNull = Use null byte as frame delimiter? Otherwise newline delimiter is used.
+	+/
+	this(TcpSocket socket, string host, LogLevel v, Flag!"nullDelimeter" useNull = Yes.nullDelimeter) @safe
+	{
+		delim = useNull ? "\0" : "\n";
+		super(socket, null, host, v);
+	}
+
+	override protected void writeLogMsg(ref LogEntry payload) @trusted
 	{
 		if(!socket.isAlive)
 		{
@@ -44,7 +153,10 @@ class TcpGrayLogger : GrayLogger
 			// Do nothing
 			return;
 		}
-		auto data = messageData(payload);
+		fillAppender(payload);
+		scope(exit) clearAppender;
+		_dataAppender.put(cast(ubyte[])delim);
+		auto data = _dataAppender.data;
 		do
 		{
 			immutable status = socket.send(data);
@@ -66,16 +178,25 @@ class TcpGrayLogger : GrayLogger
 	}
 }
 
-debug import std.stdio;
-
-class UdpGrayLogger : GrayLogger
+/++
+UDP Graylog Logger
++/
+class UdpGrayLogger : SocketGrayLogger
 {
-	private ubyte[] _chunk;
+	protected ubyte[] _chunk;
 	import std.random;
 	import std.datetime;
 
 	Mt19937 gen;
 
+	/++
+	Params:
+		socket = remote blocking UDP socket
+		compress = compress algorithm. Set `null` or `Compress.init` to send messages without compression.
+		host = local service name
+		v = log level
+		chunk = maximal chunk size (size of UDP datagram)
+	+/
 	this(UdpSocket socket, Compress compress, string host, LogLevel v, int chunk = 8192) @safe
 	{
 		super(socket, compress, host, v);
@@ -87,7 +208,7 @@ class UdpGrayLogger : GrayLogger
 		gen = typeof(gen)(cast(uint)(MonoTime.currTime.ticks ^ (uniform!size_t * hashOf(host))));
 	}
 
-	private bool send(const(void)[] data) @safe
+	protected bool send(const(void)[] data) @safe
 	{
 		for(;;)
 		{
@@ -116,15 +237,13 @@ class UdpGrayLogger : GrayLogger
 			// Do nothing
 			return;
 		}
-		auto data = messageData(payload);
-		debug
-		{
-			writeln("Log msg: ", payload.msg);
-		}
+		fillAppender(payload);
+		auto data = _dataAppender.data;
+		scope(exit) clearAppender;
 		if(data.length <= _chunk.length)
 		{
 			// send all data as single datagram
-			send(data).writeln;
+			send(data);
 		}
 		else
 		{
@@ -137,17 +256,16 @@ class UdpGrayLogger : GrayLogger
 				// ignore huge msg
 				return;
 			}
-			_chunk[11] = cast(ubyte) chs.length;
+			ulong[1] id = void;
+			id[0] = uniform!ulong(gen);
+			_chunk[2..10] = cast(ubyte[]) id;
+			_chunk[11] = cast(ubyte) len;
 			foreach(i, ch; chs.enumerate)
 			{
-				ulong[1] id = void;
-				id[0] = uniform!ulong(gen);
 				//Endianness does not matter
-				_chunk[2..10] = cast(ubyte[]) id;
 				_chunk[10] = cast(ubyte) i;
 				immutable datagramLength = 12 + ch.length;
 				_chunk[12 .. datagramLength] = ch[];
-
 				immutable success = send(_chunk[0 .. datagramLength]);
 				if(!success)
 				{
@@ -155,27 +273,59 @@ class UdpGrayLogger : GrayLogger
 				}
 			}
 		}
-		debug
-		{
-			writeln("udp: sended!");
-		}
 	}
 }
 
-abstract class GrayLogger : Logger
+/++
+Abstract Socket Graylog Logger
++/
+abstract class SocketGrayLogger : GrayLogger
 {
-	enum string gelfVersion = "1.1";
+	protected Socket _socket;
 
-	private Socket _socket;
-	private string _host;
-	private Compress _compress;
-	private immutable string _msgStart;
-
+	/++
+	Params:
+		socket = remote blocking socket
+		compress = compress algorithm. Set `null` or `Compress.init` to send messages without compression.
+		host = local service name
+		v = log level
+	+/
 	this(Socket socket, Compress compress, string host, LogLevel v) @safe
 	{
 		if(!socket.blocking)
-			throw new SocketException("GrayLogger: socket must be blocking.");
+			throw new SocketException("SocketGrayLogger: socket must be blocking.");
 		_socket = socket;
+		super(compress, host, v);
+	}
+
+	final Socket socket() @property @safe pure nothrow @nogc
+	{
+		return _socket;
+	}
+}
+
+/++
+Abstract Graylog Logger
++/
+abstract class GrayLogger : Logger
+{
+	enum string gelfVersion = "1.1";
+	import std.array: appender, Appender;
+
+	protected string _host;
+	protected Compress _compress;
+	protected immutable string _msgStart;
+	protected Appender!(ubyte[]) _dataAppender;
+
+	/++
+	Params:
+		compress = compress algorithm. Set `null` or `Compress.init` to send messages without compression.
+		host = local service name
+		v = log level
+	+/
+	this(Compress compress, string host, LogLevel v) @safe
+	{
+		_dataAppender = appender!(ubyte[]);
 		_host = host;
 		_compress = compress;
 		_msgStart = `{"version":"` ~ gelfVersion ~ `","host":"` ~ host ~ `","short_message":`;
@@ -228,41 +378,31 @@ abstract class GrayLogger : Logger
 		sink(`"}`);
 	}
 
-	final const(void)[] messageData(ref LogEntry payload) @trusted
-	out(result)
+	final void fillAppender(ref LogEntry payload) @trusted
 	{
-		assert(result.length);
-	}
-	body
-	{
-		import std.array: appender;
-		auto app = appender!(const(ubyte)[])();
-		app.reserve(1024);
 		if(_compress)
 		{
-			formatMessage( (str) { app.put(cast(const(ubyte)[]) _compress.compress(str)); }, payload);
-			app.put(cast(const(ubyte)[]) _compress.flush);
+			formatMessage( (str) { _dataAppender.put(cast(const(ubyte)[]) _compress.compress(str)); }, payload);
+			_dataAppender.put(cast(const(ubyte)[]) _compress.flush);
 		}
 		else
 		{
-			formatMessage( (str) { app.put(cast(const(ubyte)[]) str); }, payload);
-			debug
-			{
-				writeln(cast(string)app.data);
-			}
+			formatMessage( (str) { _dataAppender.put(cast(const(ubyte)[]) str); }, payload);
 		}
-		return cast(typeof(return)) app.data;
 	}
 
-	final @property @safe pure nothrow @nogc:
-	
-	string host()
+	final void clearAppender()
+	{
+		enum ml = 8196;
+		_dataAppender.clear;
+		if(_dataAppender.capacity > ml)
+		{
+			_dataAppender.shrinkTo(ml);
+		}
+	}
+
+	final string host() @property @safe pure nothrow @nogc
 	{
 		return _host;
-	}
-
-	Socket socket()
-	{
-		return _socket;
 	}
 }
