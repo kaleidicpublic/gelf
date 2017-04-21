@@ -1,6 +1,7 @@
 gelf
 ====
 Implementation of [Graylog Extended Logging Format](http://docs.graylog.org/en/latest/pages/gelf.html) for `std.experimental.logger`.
+Generated documents at http://gelf.code.kaleidic.io
 
 ##  Features
 - Small and flexible API

@@ -1,6 +1,57 @@
-/++
-Implementation of Graylog Extended Logging Format for `std.experimental.logger`.
-+/
+/**
+Implementation of [Graylog Extended Logging Format](http://docs.graylog.org/en/latest/pages/gelf.html) for `std.experimental.logger`.
+Generated documents at http://gelf.code.kaleidic.io
+
+##  Features
+- Small and flexible API
+- `GrayLogger` does not throw exceptions while it is sending a message
+- UDP, TCP, and HTTP transports are supproted
+*/
+
+/**
+Example:
+	---
+		// UDP
+		Compress c; // `null` value is for no compression
+		// c = new Compress;
+		// c = new Compress(HeaderFormat.gzip);
+		auto socket = new UdpSocket();
+		socket.connect(new InternetAddress("192.168.59.103", 12201));
+		// The last param is UDP chunk size. This is optional paramter with default value equals to 8192
+		sharedLog = new UdpGrayLogger(socket, c, "YourServiceName", LogLevel.all, 4096);
+
+		error("===== Error Information =====");
+	---
+*/
+
+/**
+Example:
+	---
+		// TCP
+		import std.typecons: Yes, No;
+		auto socket = new TcpSocket();
+		socket.connect(new InternetAddress("192.168.59.103", 12201));
+		// Defualt value for nullDelimeter is `Yes`.
+		// Newline delimiter would be used if nullDelimeter is `false`/`No`.
+		sharedLog = new TcpGrayLogger(socket, "YourServiceName", LogLevel.all, Yes.nullDelimeter);
+
+		error("===== Error Information =====");
+*/
+
+/**
+Example:
+	---
+		// HTTP
+		import std.net.curl: HTTP;
+		Compress c; // `null` value is for no compression
+		// c = new Compress;
+		// c = new Compress(HeaderFormat.gzip);
+		sharedLog = new HttpGrayLogger(HTTP("192.168.59.103:12201/gelf"), c, "YourServiceName", LogLevel.all);
+
+		error("===== Error Information =====");
+	---
+*/
+
 module gelf;
 
 //version = gelf_test_udp;
@@ -9,6 +60,7 @@ module gelf;
 
 /// UDP
 version(gelf_test_udp)
+///
 unittest
 {
 	import std.format: format;
@@ -39,6 +91,7 @@ unittest
 
 /// TCP
 version(gelf_test_tcp)
+///
 unittest
 {
 	auto socket = new TcpSocket();
@@ -51,6 +104,7 @@ unittest
 
 /// HTTP
 version(gelf_test_http)
+///
 unittest
 {
 	import std.format: format;
@@ -62,6 +116,7 @@ unittest
 	}
 }
 
+///
 unittest
 {
 	void t_udp()
@@ -106,9 +161,9 @@ import std.concurrency : Tid;
 import std.zlib: Compress, HeaderFormat;
 import core.stdc.errno: errno, EINTR;
 
-/++
+/**
 HTTP Graylog Logger
-+/
+*/
 class HttpGrayLogger : GrayLogger
 {
 	import std.net.curl;
@@ -157,29 +212,30 @@ class HttpGrayLogger : GrayLogger
 	}
 }
 
-/++
+/**
 TCP Graylog Logger
-+/
+*/
 class TcpGrayLogger : SocketGrayLogger
 {
 	import std.typecons: Flag, Yes;
 
 	private immutable string delim;
 
-	/++
+	/**
 	Graylog TCP connection does not support compression.
 	Params:
 		socket = remote blocking TCP socket
 		host = local service name
 		v = log level
 		useNull = Use null byte as frame delimiter? Otherwise newline delimiter is used.
-	+/
+	*/
 	this(TcpSocket socket, string host, LogLevel v, Flag!"nullDelimeter" useNull = Yes.nullDelimeter) @safe
 	{
 		delim = useNull ? "\0" : "\n";
 		super(socket, null, host, v);
 	}
 
+	///
 	override protected void writeLogMsg(ref LogEntry payload) @trusted
 	{
 		if(!socket.isAlive)
@@ -213,9 +269,9 @@ class TcpGrayLogger : SocketGrayLogger
 	}
 }
 
-/++
+/**
 UDP Graylog Logger
-+/
+*/
 class UdpGrayLogger : SocketGrayLogger
 {
 	protected ubyte[] _chunk;
@@ -224,14 +280,14 @@ class UdpGrayLogger : SocketGrayLogger
 
 	Mt19937 gen;
 
-	/++
+	/**
 	Params:
 		socket = remote blocking UDP socket
 		compress = compress algorithm. Set `null` or `Compress.init` to send messages without compression.
 		host = local service name
 		v = log level
 		chunk = maximal chunk size (size of UDP datagram)
-	+/
+	*/
 	this(UdpSocket socket, Compress compress, string host, LogLevel v, int chunk = 8192) @safe
 	{
 		super(socket, compress, host, v);
@@ -311,20 +367,20 @@ class UdpGrayLogger : SocketGrayLogger
 	}
 }
 
-/++
+/**
 Abstract Socket Graylog Logger
-+/
+*/
 abstract class SocketGrayLogger : GrayLogger
 {
 	protected Socket _socket;
 
-	/++
+	/**
 	Params:
 		socket = remote blocking socket
 		compress = compress algorithm. Set `null` or `Compress.init` to send messages without compression.
 		host = local service name
 		v = log level
-	+/
+	*/
 	this(Socket socket, Compress compress, string host, LogLevel v) @safe
 	{
 		if(!socket.blocking)
@@ -333,15 +389,16 @@ abstract class SocketGrayLogger : GrayLogger
 		super(compress, host, v);
 	}
 
+	///
 	final Socket socket() @property @safe pure nothrow @nogc
 	{
 		return _socket;
 	}
 }
 
-/++
+/**
 Abstract Graylog Logger
-+/
+*/
 abstract class GrayLogger : Logger
 {
 	enum string gelfVersion = "1.1";
@@ -352,12 +409,12 @@ abstract class GrayLogger : Logger
 	protected immutable string _msgStart;
 	protected Appender!(ubyte[]) _dataAppender;
 
-	/++
+	/**
 	Params:
 		compress = compress algorithm. Set `null` or `Compress.init` to send messages without compression.
 		host = local service name
 		v = log level
-	+/
+	*/
 	this(Compress compress, string host, LogLevel v) @safe
 	{
 		_dataAppender = appender!(ubyte[]);
@@ -413,6 +470,7 @@ abstract class GrayLogger : Logger
 		sink(`"}`);
 	}
 
+	///
 	final void fillAppender(ref LogEntry payload) @trusted
 	{
 		if(_compress)
@@ -426,6 +484,7 @@ abstract class GrayLogger : Logger
 		}
 	}
 
+	///
 	final void clearAppender()
 	{
 		enum ml = 8192;
@@ -436,6 +495,7 @@ abstract class GrayLogger : Logger
 		}
 	}
 
+	///
 	final string host() @property @safe pure nothrow @nogc
 	{
 		return _host;

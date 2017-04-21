@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+        <title>gelf (gelf)</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="stylesheet" href="style.css" />
+        <script src="script.js" type="text/javascript"></script>
+
+	
+	<link rel="prefetch" href="search-results.html" />
+</head>
+<body>
+	<div id="page-header">
+		<div id="logotype">
+		<span>Documentation</span>
+		<nav>
+			<a href="http://pushover.code.kaleidic.io/">Kaleidic Associates Open Source - Gelf</a>
+			<a href="https://github.com/kaleidicpublic/gelf">Github - Gelf API wrapper for D</a>
+		</nav>
+		</div>
+
+		<form id="search" action="search-docs.html">
+			<input placeholder="Find a symbol name..." name="searchTerm" type="search" />
+			<input type="submit" value="Go" />
+		</form>
+	</div>
+	<div id="page-body">
+		<div id="page-content">
+		<h1>gelf</h1><div class="breadcrumbs"></div><div><div class="documentation-comment synopsis"><div></div></div></div><div class="annotated-prototype"></div><h2 id="members"><a href="#members" class="header-anchor">Members</a></h2><h3 id="classes"><a href="#classes" class="header-anchor">Classes</a></h3><dl class="member-list native"><dt><a href="gelf.GrayLogger.html">GrayLogger</a><div style="max-width: 17ch;" class="simplified-prototype"><span class="builtin-type">class</span> <span class="name">GrayLogger</span></div></dt><dd><div><p>Abstract Graylog Logger</p></div></dd><dt><a href="gelf.HttpGrayLogger.html">HttpGrayLogger</a><div style="max-width: 22ch;" class="simplified-prototype"><span class="builtin-type">class</span> <span class="name">HttpGrayLogger</span></div></dt><dd><div><p>HTTP Graylog Logger</p></div></dd><dt><a href="gelf.SocketGrayLogger.html">SocketGrayLogger</a><div style="max-width: 24ch;" class="simplified-prototype"><span class="builtin-type">class</span> <span class="name">SocketGrayLogger</span></div></dt><dd><div><p>Abstract Socket Graylog Logger</p></div></dd><dt><a href="gelf.TcpGrayLogger.html">TcpGrayLogger</a><div style="max-width: 20ch;" class="simplified-prototype"><span class="builtin-type">class</span> <span class="name">TcpGrayLogger</span></div></dt><dd><div><p>TCP Graylog Logger</p></div></dd><dt><a href="gelf.UdpGrayLogger.html">UdpGrayLogger</a><div style="max-width: 20ch;" class="simplified-prototype"><span class="builtin-type">class</span> <span class="name">UdpGrayLogger</span></div></dt><dd><div><p>UDP Graylog Logger</p></div></dd></dl><div><h2 id="examples"><a href="#examples" class="header-anchor">Examples</a></h2><div class="documentation-comment"><div><pre class="d_code highlighted with-line-wrappers"><span class="br">1 </span><span class="com">// HTTP</span>
+<span class="br">2 </span><span class="kwrd">import</span> <span class="hid">std</span>.<span class="hid">net</span>.<span class="hid">curl</span>: <span class="hid">HTTP</span>;
+<span class="br">3 </span><span class="hid">Compress</span> <span class="hid">c</span>; <span class="com">// `null` value is for no compression</span>
+<span class="br">4 </span><span class="com">// c = new Compress;</span>
+<span class="br">5 </span><span class="com">// c = new Compress(HeaderFormat.gzip);</span>
+<span class="br">6 </span><span class="hid">sharedLog</span> = <span class="kwrd">new</span> <span class="hid">HttpGrayLogger</span>(<span class="hid">HTTP</span>(<span class="str">&quot;192.168.59.103:12201/gelf&quot;</span>), <span class="hid">c</span>, <span class="str">&quot;YourServiceName&quot;</span>, <span class="hid">LogLevel</span>.<span class="hid">all</span>);
+<span class="br">7 </span>
+<span class="br">8 </span><span class="hid">error</span>(<span class="str">&quot;===== Error Information =====&quot;</span>);
+</pre></div></div><div class="unittest-example-holder"><div class="documentation-comment"></div><pre class="d_code highlighted with-line-wrappers"><span class="br">1 </span><span class="kwrd">import</span> <span class="hid">std</span>.<span class="hid">format</span>: <span class="hid">format</span>;
+<span class="br">2 </span><span class="kwrd">foreach</span>(<span class="hid">i</span>, <span class="hid">c</span>; [<span class="hid">Compress</span>.<span class="hid">init</span>, <span class="kwrd">new</span> <span class="hid">Compress</span>, <span class="kwrd">new</span> <span class="hid">Compress</span>(<span class="hid">HeaderFormat</span>.<span class="hid">gzip</span>)])
+<span class="br">3 </span>{
+<span class="br">4 </span>	<span class="kwrd">auto</span> <span class="hid">socket</span> = <span class="kwrd">new</span> <span class="hid">UdpSocket</span>();
+<span class="br">5 </span>	<span class="hid">socket</span>.<span class="hid">connect</span>(<span class="kwrd">new</span> <span class="hid">InternetAddress</span>(<span class="str">&quot;192.168.59.103&quot;</span>, <span class="num">12201</span>));
+<span class="br">6 </span>	<span class="kwrd">auto</span> <span class="hid">logger</span> = <span class="kwrd">new</span> <span class="hid">UdpGrayLogger</span>(<span class="hid">socket</span>, <span class="kwrd">null</span>, <span class="str">&quot;UDP%s&quot;</span>.<span class="hid">format</span>(<span class="hid">i</span>), <span class="hid">LogLevel</span>.<span class="hid">all</span>, <span class="num">512</span>);
+<span class="br">7 </span>	<span class="hid">logger</span>.<span class="hid">errorf</span>(<span class="str">&quot;===== UDP #%s.0 =====&quot;</span>, <span class="hid">i</span>);
+<span class="br">8 </span>	<span class="hid">logger</span>.<span class="hid">errorf</span>(<span class="str">&quot;===== UDP #%s.1 =====&quot;</span>, <span class="hid">i</span>);
+<span class="br">9 </span>	<span class="hid">logger</span>.<span class="hid">errorf</span>(<span class="str">&quot;========== UDP #%s.3 ==========\n%s&quot;</span>, <span class="hid">i</span>,
+<span class="br">10 </span>		<span class="str">&quot;Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed vitae nisl scelerisque,
+<span class="br">11 </span>		vestibulum arcu quis, rhoncus leo. Nunc ullamcorper nibh vitae nisl viverra dignissim.
+<span class="br">12 </span>		Etiam dictum tincidunt commodo. Morbi faucibus et ipsum in hendrerit. Phasellus rutrum,
+<span class="br">13 </span>		lacus at auctor tempor, metus nisl suscipit nisi, elementum molestie quam enim nec erat.
+<span class="br">14 </span>		Sed cursus libero felis, in pulvinar neque molestie eget. Praesent pulvinar est vitae sem
+<span class="br">15 </span>		pulvinar, pharetra dignissim velit condimentum.
+<span class="br">16 </span>
+<span class="br">17 </span>		Vestibulum laoreet lorem eu dui ornare, ac congue enim consectetur.
+<span class="br">18 </span>		Morbi tincidunt, turpis et egestas sodales, erat velit suscipit felis,
+<span class="br">19 </span>		quis porttitor nulla turpis ut odio. Fusce in faucibus felis, ac feugiat mauris.
+<span class="br">20 </span>		Nullam vel sagittis mi. Nullam eu turpis ullamcorper, porta odio sit amet, dictum lorem.
+<span class="br">21 </span>		Nunc dictum in sem vel pharetra. In consectetur posuere massa, sed convallis felis tempus quis.
+<span class="br">22 </span>		Maecenas eleifend aliquam lectus pretium aliquam. Morbi viverra dui tortor,
+<span class="br">23 </span>		vel laoreet libero accumsan sed. Quisque congue erat quis nisl sed.&quot;</span>);
+<span class="br">24 </span>}
+</pre></div><div class="unittest-example-holder"><div class="documentation-comment"></div><pre class="d_code highlighted with-line-wrappers"><span class="br">1 </span><span class="kwrd">auto</span> <span class="hid">socket</span> = <span class="kwrd">new</span> <span class="hid">TcpSocket</span>();
+<span class="br">2 </span><span class="hid">socket</span>.<span class="hid">connect</span>(<span class="kwrd">new</span> <span class="hid">InternetAddress</span>(<span class="str">&quot;192.168.59.103&quot;</span>, <span class="num">12202</span>));
+<span class="br">3 </span><span class="kwrd">auto</span> <span class="hid">logger</span> = <span class="kwrd">new</span> <span class="hid">TcpGrayLogger</span>(<span class="hid">socket</span>, <span class="str">&quot;TCP&quot;</span>, <span class="hid">LogLevel</span>.<span class="hid">all</span>);
+<span class="br">4 </span><span class="hid">logger</span>.<span class="hid">error</span>(<span class="str">&quot;===== TCP.0 =====&quot;</span>);
+<span class="br">5 </span><span class="hid">logger</span>.<span class="hid">error</span>(<span class="str">&quot;===== TCP.1 =====&quot;</span>);
+<span class="br">6 </span><span class="hid">logger</span>.<span class="hid">error</span>(<span class="str">&quot;===== TCP.2 =====&quot;</span>);
+</pre></div><div class="unittest-example-holder"><div class="documentation-comment"></div><pre class="d_code highlighted with-line-wrappers"><span class="br">1 </span><span class="kwrd">import</span> <span class="hid">std</span>.<span class="hid">format</span>: <span class="hid">format</span>;
+<span class="br">2 </span><span class="kwrd">import</span> <span class="hid">std</span>.<span class="hid">net</span>.<span class="hid">curl</span>;
+<span class="br">3 </span><span class="kwrd">foreach</span>(<span class="hid">i</span>, <span class="hid">c</span>; [<span class="hid">Compress</span>.<span class="hid">init</span>, <span class="kwrd">new</span> <span class="hid">Compress</span>, <span class="kwrd">new</span> <span class="hid">Compress</span>(<span class="hid">HeaderFormat</span>.<span class="hid">gzip</span>)])
+<span class="br">4 </span>{
+<span class="br">5 </span>	<span class="kwrd">auto</span> <span class="hid">logger</span> = <span class="kwrd">new</span> <span class="hid">HttpGrayLogger</span>(<span class="hid">HTTP</span>(<span class="str">&quot;192.168.59.103:12204/gelf&quot;</span>), <span class="hid">c</span>, <span class="str">&quot;HTTP%s&quot;</span>.<span class="hid">format</span>(<span class="hid">i</span>), <span class="hid">LogLevel</span>.<span class="hid">all</span>);
+<span class="br">6 </span>	<span class="hid">logger</span>.<span class="hid">errorf</span>(<span class="str">&quot;===== HTTP #%s =====&quot;</span>, <span class="hid">i</span>);
+<span class="br">7 </span>}
+</pre></div><div class="unittest-example-holder"><div class="documentation-comment"></div><pre class="d_code highlighted with-line-wrappers"><span class="br">1 </span><span class="type">void</span> <span class="hid">t_udp</span>()
+<span class="br">2 </span>{
+<span class="br">3 </span>	<span class="hid">Compress</span> <span class="hid">c</span>; <span class="com">//`null` value for no compression</span>
+<span class="br">4 </span>	<span class="com">// c = new Compress;</span>
+<span class="br">5 </span>	<span class="com">// c = new Compress(HeaderFormat.gzip);</span>
+<span class="br">6 </span>	<span class="kwrd">auto</span> <span class="hid">socket</span> = <span class="kwrd">new</span> <span class="hid">UdpSocket</span>();
+<span class="br">7 </span>	<span class="hid">socket</span>.<span class="hid">connect</span>(<span class="kwrd">new</span> <span class="hid">InternetAddress</span>(<span class="str">&quot;192.168.59.103&quot;</span>, <span class="num">12201</span>));
+<span class="br">8 </span>	<span class="com">// The last param is UDP chunk size. This is optional paramter with default value equals to 8192</span>
+<span class="br">9 </span>	<span class="hid">sharedLog</span> = <span class="kwrd">new</span> <span class="hid">UdpGrayLogger</span>(<span class="hid">socket</span>, <span class="hid">c</span>, <span class="str">&quot;YourServiceName&quot;</span>, <span class="hid">LogLevel</span>.<span class="hid">all</span>, <span class="num">4096</span>);
+<span class="br">10 </span>	<span class="hid">error</span>(<span class="str">&quot;===== Error Information =====&quot;</span>);
+<span class="br">11 </span>}
+<span class="br">12 </span>
+<span class="br">13 </span><span class="type">void</span> <span class="hid">t_tcp</span>()
+<span class="br">14 </span>{
+<span class="br">15 </span>	<span class="kwrd">import</span> <span class="hid">std</span>.<span class="hid">typecons</span>: <span class="hid">Yes</span>, <span class="hid">No</span>;
+<span class="br">16 </span>	<span class="kwrd">auto</span> <span class="hid">socket</span> = <span class="kwrd">new</span> <span class="hid">TcpSocket</span>();
+<span class="br">17 </span>	<span class="hid">socket</span>.<span class="hid">connect</span>(<span class="kwrd">new</span> <span class="hid">InternetAddress</span>(<span class="str">&quot;192.168.59.103&quot;</span>, <span class="num">12201</span>));
+<span class="br">18 </span>	<span class="com">/+Defualt value for nullDelimeter is `Yes`. Newline delimiter would be used if nullDelimeter is `false`/`No`.+/</span>
+<span class="br">19 </span>	<span class="hid">sharedLog</span> = <span class="kwrd">new</span> <span class="hid">TcpGrayLogger</span>(<span class="hid">socket</span>, <span class="str">&quot;YourServiceName&quot;</span>, <span class="hid">LogLevel</span>.<span class="hid">all</span>, <span class="hid">Yes</span>.<span class="hid">nullDelimeter</span>);
+<span class="br">20 </span>	<span class="hid">error</span>(<span class="str">&quot;===== Error Information =====&quot;</span>);
+<span class="br">21 </span>}
+<span class="br">22 </span>
+<span class="br">23 </span><span class="type">void</span> <span class="hid">t_http</span>()
+<span class="br">24 </span>{
+<span class="br">25 </span>	<span class="kwrd">import</span> <span class="hid">std</span>.<span class="hid">net</span>.<span class="hid">curl</span>: <span class="hid">HTTP</span>;
+<span class="br">26 </span>	<span class="hid">Compress</span> <span class="hid">c</span>; <span class="com">//`null` value for no compression</span>
+<span class="br">27 </span>	<span class="com">// c = new Compress;</span>
+<span class="br">28 </span>	<span class="com">// c = new Compress(HeaderFormat.gzip);</span>
+<span class="br">29 </span>	<span class="hid">sharedLog</span> = <span class="kwrd">new</span> <span class="hid">HttpGrayLogger</span>(<span class="hid">HTTP</span>(<span class="str">&quot;192.168.59.103:12204/gelf&quot;</span>), <span class="hid">c</span>, <span class="str">&quot;YourServiceName&quot;</span>, <span class="hid">LogLevel</span>.<span class="hid">all</span>);
+<span class="br">30 </span>	<span class="hid">error</span>(<span class="str">&quot;===== Error Information =====&quot;</span>);
+<span class="br">31 </span>}
+</pre></div></div></div>
+		<div id="page-nav">
+		</div>
+	</div>
+	<div id="page-footer">Page generated by <a href="https://github.com/adamdruppe/adrdox">adrdox</a></div>
+</body>
+</html>
